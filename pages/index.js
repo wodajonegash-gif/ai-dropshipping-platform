@@ -29,11 +29,11 @@ export default function Dashboard() {
 
   async function createStore(e) {
     e.preventDefault();
-    if (!storeName) return;
+    if (!storeName.trim()) return;
     setLoading(true);
     const { data, error } = await supabase
       .from('stores')
-      .insert([{ name: storeName }])
+      .insert([{ name: storeName.trim() }])
       .select();
     
     if (!error) {
@@ -43,12 +43,25 @@ export default function Dashboard() {
     setLoading(false);
   }
 
+  async function deleteStore(e, storeId) {
+    e.stopPropagation();
+    if (!confirm('Are you sure you want to delete this store?')) return;
+
+    const { error } = await supabase.from('stores').delete().eq('id', storeId);
+    if (!error) {
+      if (selectedStore?.id === storeId) {
+        setSelectedStore(null);
+        setProducts([]);
+      }
+      fetchStores();
+    }
+  }
+
   function handleSelectStore(store) {
     setSelectedStore(store);
     fetchProducts(store.id);
   }
 
-  // AI Agent Simulator: Generates catalog items with selling price and COGS
   async function generateAIProduct() {
     if (!selectedStore) return;
     setGeneratingProduct(true);
@@ -129,9 +142,17 @@ export default function Dashboard() {
                   <strong style={{ fontSize: '18px', color: '#1f2937' }}>{store.name}</strong>
                   <div style={{ fontSize: '12px', color: '#9ca3af' }}>ID: {store.id}</div>
                 </div>
-                <span style={{ padding: '4px 12px', backgroundColor: '#d1fae5', color: '#065f46', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold' }}>
-                  {selectedStore?.id === store.id ? 'Active Selection' : 'Click to Manage'}
-                </span>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <span style={{ padding: '4px 12px', backgroundColor: '#d1fae5', color: '#065f46', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold' }}>
+                    {selectedStore?.id === store.id ? 'Active Selection' : 'Click to Manage'}
+                  </span>
+                  <button
+                    onClick={(e) => deleteStore(e, store.id)}
+                    style={{ padding: '6px 12px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+                  >
+                    Delete
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
