@@ -9,6 +9,9 @@ export default function Dashboard() {
   const [stores, setStores] = useState([]);
   const [storeName, setStoreName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [selectedStore, setSelectedStore] = useState(null);
+  const [products, setProducts] = useState([]);
+  const [generatingProduct, setGeneratingProduct] = useState(false);
 
   useEffect(() => {
     fetchStores();
@@ -17,6 +20,11 @@ export default function Dashboard() {
   async function fetchStores() {
     const { data } = await supabase.from('stores').select('*');
     if (data) setStores(data);
+  }
+
+  async function fetchProducts(storeId) {
+    const { data } = await supabase.from('products').select('*').eq('store_id', storeId);
+    if (data) setProducts(data);
   }
 
   async function createStore(e) {
@@ -35,12 +43,49 @@ export default function Dashboard() {
     setLoading(false);
   }
 
+  function handleSelectStore(store) {
+    setSelectedStore(store);
+    fetchProducts(store.id);
+  }
+
+  // AI Agent Simulator: Generates catalog items with selling price and COGS
+  async function generateAIProduct() {
+    if (!selectedStore) return;
+    setGeneratingProduct(true);
+
+    const sampleProducts = [
+      { name: "Ergonomic Posture Corrector Pro", price: 39.99, cogs: 12.50, description: "Instant spine alignment with breathable neoprene support." },
+      { name: "Ultra-Quiet Portable Neck Fan", price: 29.99, cogs: 8.20, description: "Hands-free 360-degree cooling airflow with 12-hour battery life." },
+      { name: "Smart Anti-Gulp Dog Feeding Bowl", price: 24.99, cogs: 5.75, description: "Prevents bloat and improves digestion with non-slip silicone base." },
+      { name: "Wireless RGB LED Under-Cabinet Lights", price: 34.99, cogs: 11.00, description: "Motion-activated rechargeable lighting strips with magnetic mounts." }
+    ];
+
+    const randomProduct = sampleProducts[Math.floor(Math.random() * sampleProducts.length)];
+
+    const { error } = await supabase.from('products').insert([
+      {
+        store_id: selectedStore.id,
+        title: randomProduct.name,
+        description: randomProduct.description,
+        price: randomProduct.price,
+        cogs: randomProduct.cogs,
+        sku: `SKU-${Math.floor(100000 + Math.random() * 900000)}`
+      }
+    ]);
+
+    if (!error) {
+      fetchProducts(selectedStore.id);
+    }
+    setGeneratingProduct(false);
+  }
+
   return (
     <div style={{ padding: '40px', fontFamily: 'Arial, sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh' }}>
-      <div style={{ maxWidth: '800px', margin: '0 auto', backgroundColor: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+      <div style={{ maxWidth: '900px', margin: '0 auto', backgroundColor: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
         <h1 style={{ color: '#111827', marginBottom: '8px' }}>AI E-Commerce Operating System</h1>
         <p style={{ color: '#6b7280', marginBottom: '24px' }}>Automated Dropshipping, Sourcing & Net Profit Engine</p>
 
+        {/* Create Store Form */}
         <form onSubmit={createStore} style={{ display: 'flex', gap: '10px', marginBottom: '30px' }}>
           <input
             type="text"
@@ -58,23 +103,83 @@ export default function Dashboard() {
           </button>
         </form>
 
+        {/* Stores Section */}
         <h2 style={{ fontSize: '20px', color: '#374151', borderBottom: '1px solid #e5e7eb', paddingBottom: '10px' }}>Active Stores</h2>
         {stores.length === 0 ? (
           <p style={{ color: '#9ca3af' }}>No stores connected yet. Create one above to get started.</p>
         ) : (
-          <ul style={{ listStyle: 'none', padding: 0 }}>
+          <ul style={{ listStyle: 'none', padding: 0, marginBottom: '40px' }}>
             {stores.map((store) => (
-              <li key={store.id} style={{ padding: '16px', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <li 
+                key={store.id} 
+                onClick={() => handleSelectStore(store)}
+                style={{ 
+                  padding: '16px', 
+                  border: selectedStore?.id === store.id ? '2px solid #2563eb' : '1px solid #e5e7eb', 
+                  borderRadius: '6px',
+                  marginBottom: '10px',
+                  display: 'flex', 
+                  justify: 'space-between', 
+                  alignItems: 'center',
+                  cursor: 'pointer',
+                  backgroundColor: selectedStore?.id === store.id ? '#eff6ff' : '#fff'
+                }}
+              >
                 <div>
                   <strong style={{ fontSize: '18px', color: '#1f2937' }}>{store.name}</strong>
                   <div style={{ fontSize: '12px', color: '#9ca3af' }}>ID: {store.id}</div>
                 </div>
                 <span style={{ padding: '4px 12px', backgroundColor: '#d1fae5', color: '#065f46', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold' }}>
-                  Connected to Supabase
+                  {selectedStore?.id === store.id ? 'Active Selection' : 'Click to Manage'}
                 </span>
               </li>
             ))}
           </ul>
+        )}
+
+        {/* Selected Store Catalog Management */}
+        {selectedStore && (
+          <div style={{ marginTop: '30px', padding: '20px', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, color: '#111827' }}>Product Catalog: {selectedStore.name}</h3>
+              <button
+                onClick={generateAIProduct}
+                disabled={generatingProduct}
+                style={{ padding: '10px 18px', backgroundColor: '#059669', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
+              >
+                {generatingProduct ? 'AI Sourcing...' : '+ Generate AI Product'}
+              </button>
+            </div>
+
+            {products.length === 0 ? (
+              <p style={{ color: '#6b7280' }}>No products sourced yet. Click "+ Generate AI Product" to let the agent find items.</p>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #e5e7eb', color: '#4b5563' }}>
+                    <th style={{ padding: '8px' }}>Product Title</th>
+                    <th style={{ padding: '8px' }}>SKU</th>
+                    <th style={{ padding: '8px' }}>Cost (COGS)</th>
+                    <th style={{ padding: '8px' }}>Retail Price</th>
+                    <th style={{ padding: '8px' }}>Est. Margin</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {products.map((p) => (
+                    <tr key={p.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '12px 8px', fontWeight: 'bold', color: '#1f2937' }}>{p.title}</td>
+                      <td style={{ padding: '12px 8px', color: '#6b7280', fontSize: '12px' }}>{p.sku || 'N/A'}</td>
+                      <td style={{ padding: '12px 8px', color: '#dc2626' }}>${p.cogs ? Number(p.cogs).toFixed(2) : '0.00'}</td>
+                      <td style={{ padding: '12px 8px', color: '#16a34a', fontWeight: 'bold' }}>${p.price ? Number(p.price).toFixed(2) : '0.00'}</td>
+                      <td style={{ padding: '12px 8px', color: '#2563eb', fontWeight: 'bold' }}>
+                        ${p.price && p.cogs ? (Number(p.price) - Number(p.cogs)).toFixed(2) : '0.00'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         )}
       </div>
     </div>
