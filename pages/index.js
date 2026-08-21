@@ -63,7 +63,10 @@ export default function Dashboard() {
   }
 
   async function generateAIProduct() {
-    if (!selectedStore) return;
+    if (!selectedStore) {
+      alert('Please select a store first!');
+      return;
+    }
     setGeneratingProduct(true);
 
     const sampleProducts = [
@@ -75,7 +78,7 @@ export default function Dashboard() {
 
     const randomProduct = sampleProducts[Math.floor(Math.random() * sampleProducts.length)];
 
-    const { error } = await supabase.from('products').insert([
+    const { data, error } = await supabase.from('products').insert([
       {
         store_id: selectedStore.id,
         title: randomProduct.name,
@@ -84,9 +87,11 @@ export default function Dashboard() {
         cogs: randomProduct.cogs,
         sku: `SKU-${Math.floor(100000 + Math.random() * 900000)}`
       }
-    ]);
+    ]).select();
 
-    if (!error) {
+    if (error) {
+      alert(`Supabase Error: ${error.message || JSON.stringify(error)}`);
+    } else {
       fetchProducts(selectedStore.id);
     }
     setGeneratingProduct(false);
@@ -132,7 +137,7 @@ export default function Dashboard() {
                   borderRadius: '6px',
                   marginBottom: '10px',
                   display: 'flex', 
-                  justify: 'space-between', 
+                  justifyContent: 'space-between', 
                   alignItems: 'center',
                   cursor: 'pointer',
                   backgroundColor: selectedStore?.id === store.id ? '#eff6ff' : '#fff'
