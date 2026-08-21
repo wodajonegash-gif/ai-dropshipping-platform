@@ -97,6 +97,66 @@ export default function Dashboard() {
     setGeneratingProduct(false);
   }
 
+  function exportToShopifyCSV() {
+    if (products.length === 0) {
+      alert('No products to export!');
+      return;
+    }
+
+    // Standard Shopify Product Import CSV Header Structure
+    const headers = [
+      "Handle", "Title", "Body (HTML)", "Vendor", "Standard Product Type", "Custom Product Type",
+      "Tags", "Published", "Option1 Name", "Option1 Value", "Option2 Name", "Option2 Value",
+      "Option3 Name", "Option3 Value", "Variant SKU", "Variant Grams", "Variant Inventory Tracker",
+      "Variant Inventory Qty", "Variant Inventory Policy", "Variant Fulfillment Service",
+      "Variant Price", "Variant Compare At Price", "Variant Requires Shipping", "Variant Taxable",
+      "Variant Barcode", "Image Src", "Image Position", "Image Alt Text", "Gift Card", "SEO Title",
+      "SEO Description", "Google Shopping / Google Product Category", "Google Shopping / Gender",
+      "Google Shopping / Age Group", "Google Shopping / MPN", "Google Shopping / AdWords Grouping",
+      "Google Shopping / AdWords Labels", "Google Shopping / Condition", "Google Shopping / Custom Product",
+      "Google Shopping / Custom Label 0", "Google Shopping / Custom Label 1", "Google Shopping / Custom Label 2",
+      "Google Shopping / Custom Label 3", "Google Shopping / Custom Label 4", "Variant Image",
+      "Variant Weight Unit", "Variant Tax Code", "Cost per item", "Status"
+    ];
+
+    const csvRows = [headers.join(',')];
+
+    products.forEach((product) => {
+      const handle = product.title ? product.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') : 'product-sku';
+      const title = `"${(product.title || 'Product').replace(/"/g, '""')}"`;
+      const body = `"${(product.description || '').replace(/"/g, '""')}"`;
+      const vendor = `"${(selectedStore?.name || 'Trending Essentials').replace(/"/g, '""')}"`;
+      const sku = product.sku || '';
+      const price = product.price || '0.00';
+      const cogs = product.cogs || '0.00';
+
+      const row = [
+        handle,
+        title,
+        body,
+        vendor,
+        "", "", "AI Sourced, Dropshipping", "TRUE",
+        "Title", "Default Title", "", "", "", "",
+        sku, "500", "shopify", "100", "deny", "manual",
+        price, "", "TRUE", "TRUE", "", "", "", "", "FALSE",
+        "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+        "", "g", "", cogs, "active"
+      ];
+
+      csvRows.push(row.join(','));
+    });
+
+    const csvString = csvRows.join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${selectedStore?.name ? selectedStore.name.toLowerCase().replace(/\s+/g, '-') : 'store'}-shopify-products.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
   return (
     <div style={{ padding: '40px', fontFamily: 'Arial, sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh' }}>
       <div style={{ maxWidth: '900px', margin: '0 auto', backgroundColor: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
@@ -166,15 +226,24 @@ export default function Dashboard() {
         {/* Selected Store Catalog Management */}
         {selectedStore && (
           <div style={{ marginTop: '30px', padding: '20px', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
               <h3 style={{ margin: 0, color: '#111827' }}>Product Catalog: {selectedStore.name}</h3>
-              <button
-                onClick={generateAIProduct}
-                disabled={generatingProduct}
-                style={{ padding: '10px 18px', backgroundColor: '#059669', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
-              >
-                {generatingProduct ? 'AI Sourcing...' : '+ Generate AI Product'}
-              </button>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={exportToShopifyCSV}
+                  disabled={products.length === 0}
+                  style={{ padding: '10px 18px', backgroundColor: '#4f46e5', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: products.length === 0 ? 'not-allowed' : 'pointer', opacity: products.length === 0 ? 0.6 : 1 }}
+                >
+                  Export Shopify CSV
+                </button>
+                <button
+                  onClick={generateAIProduct}
+                  disabled={generatingProduct}
+                  style={{ padding: '10px 18px', backgroundColor: '#059669', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
+                >
+                  {generatingProduct ? 'AI Sourcing...' : '+ Generate AI Product'}
+                </button>
+              </div>
             </div>
 
             {products.length === 0 ? (
